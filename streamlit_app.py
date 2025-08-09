@@ -14,7 +14,7 @@ st.title("🎫 MLF CREDIT MANAGEMENT QUERY SYSTEM")
 st.sidebar.header("🔐 User Access")
 user_role = st.sidebar.selectbox(
     "Select your role:",
-    ["Branch Manager", "CM Staff"],
+    ["Branch Manager", "CM Staff", "Supervisor"],
     help="Choose your role to access appropriate features"
 )
 
@@ -131,6 +131,10 @@ if uploaded_file is not None:
             recent_ticket_number = int(max(st.session_state.df.ID).split("-")[1])
             df_uploaded['ID'] = [f"TICKET-{recent_ticket_number + i + 1}" for i in range(len(df_uploaded))]
         
+        # Add file information to the dataframe
+        df_uploaded['Original File'] = uploaded_file.name
+        df_uploaded['File Upload Date'] = datetime.datetime.now().strftime("%m-%d-%Y %H:%M")
+        
         # Show final data to be added
         st.write("**Data to be added:**")
         st.dataframe(df_uploaded, use_container_width=True, hide_index=True)
@@ -143,7 +147,7 @@ if uploaded_file is not None:
             
             # Clear the uploaded file
             st.rerun()
-                
+            
     except Exception as e:
         st.error(f"Error reading file: {str(e)}")
         st.write("Please make sure your file is properly formatted and try again.")
@@ -152,33 +156,101 @@ if uploaded_file is not None:
 st.header("Existing Queries")
 st.write(f"Number of queries: `{len(st.session_state.df)}`")
 
-# Add internal notes functionality for CM Staff
-if user_role == "CM Staff":
-    st.subheader("📝 Add Internal Notes")
+# Show public notes to Branch Managers
+if user_role == "Branch Manager":
+    st.subheader("📝 Notes from CM Staff")
     
-    # Add a notes column if it doesn't exist
+    # Add public notes column if it doesn't exist
+    if "Public Notes" not in st.session_state.df.columns:
+        st.session_state.df["Public Notes"] = ""
+    
+    # Show queries with public notes
+    queries_with_notes = st.session_state.df[
+        (st.session_state.df["Public Notes"].notna()) & 
+        (st.session_state.df["Public Notes"] != "")
+    ]
+    
+    if not queries_with_notes.empty:
+        st.write("**Queries with notes from CM Staff:**")
+        for _, row in queries_with_notes.iterrows():
+            with st.expander(f"📋 {row['ID']} - {row['Status']}"):
+                st.write(f"**Issue:** {row['Issue']}")
+                st.write(f"**Priority:** {row['Priority']}")
+                st.write(f"**Status:** {row['Status']}")
+                st.write(f"**Notes:** {row['Public Notes']}")
+                if pd.notna(row.get('Original File')):
+                    st.write(f"**File Uploaded:** {row['Original File']} on {row['File Upload Date']}")
+    else:
+        st.info("No queries have notes from CM Staff yet.")
+
+# Add notes and file management functionality for CM Staff
+if user_role == "CM Staff":
+    st.subheader("📝 Add Notes")
+    
+    # Add notes columns if they don't exist
     if "Internal Notes" not in st.session_state.df.columns:
         st.session_state.df["Internal Notes"] = ""
+    if "Public Notes" not in st.session_state.df.columns:
+        st.session_state.df["Public Notes"] = ""
     
     # Create a form for adding notes
     with st.form("add_notes_form"):
         selected_query = st.selectbox(
             "Select query to add notes:",
             options=st.session_state.df["ID"].tolist(),
-            help="Choose a query ID to add internal notes"
+            help="Choose a query ID to add notes"
         )
-        notes = st.text_area(
-            "Internal Notes (only visible to CM Staff):",
-            help="Add internal notes about this query"
-        )
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            internal_notes = st.text_area(
+                "Internal Notes (only visible to CM Staff):",
+                help="Add internal notes about this query"
+            )
+        with col2:
+            public_notes = st.text_area(
+                "Public Notes (visible to Branch Manager):",
+                help="Add notes that the Branch Manager can see"
+            )
+        
         add_notes = st.form_submit_button("Add Notes")
     
-    if add_notes and notes.strip():
+    if add_notes and (internal_notes.strip() or public_notes.strip()):
         # Update the notes for the selected query
         query_index = st.session_state.df[st.session_state.df["ID"] == selected_query].index[0]
-        st.session_state.df.loc[query_index, "Internal Notes"] = notes
+        if internal_notes.strip():
+            st.session_state.df.loc[query_index, "Internal Notes"] = internal_notes
+        if public_notes.strip():
+            st.session_state.df.loc[query_index, "Public Notes"] = public_notes
         st.success(f"✅ Notes added to {selected_query}")
         st.rerun()
+    
+    # File download functionality for CM Staff
+    st.subheader("📁 Download Original Files")
+    
+    # Show queries with uploaded files
+    queries_with_files = st.session_state.df[st.session_state.df["Original File"].notna()]
+    
+    if not queries_with_files.empty:
+        st.write("**Queries with uploaded files:**")
+        for _, row in queries_with_files.iterrows():
+            col1, col2, col3 = st.columns([2, 3, 1])
+            with col1:
+                st.write(f"**{row['ID']}**")
+            with col2:
+                st.write(f"File: {row['Original File']}")
+                st.write(f"Uploaded: {row['File Upload Date']}")
+            with col3:
+                # Create a download button (placeholder - in real app, you'd store the actual file)
+                st.download_button(
+                    label="📥 Download",
+                    data=f"File: {row['Original File']}\nQuery ID: {row['ID']}\nUpload Date: {row['File Upload Date']}",
+                    file_name=f"query_{row['ID']}_{row['Original File']}",
+                    mime="text/plain",
+                    help="Download file information (actual file download requires file storage system)"
+                )
+    else:
+        st.info("No queries with uploaded files found.")
     
     # Add status change tracking
     st.subheader("📊 Status Change Summary")
@@ -203,6 +275,11 @@ if user_role == "CM Staff":
         "You can edit the queries by double clicking on a cell. Note how the plots below "
         "update automatically! You can also sort the table by clicking on the column headers.",
         icon="✍️",
+    )
+elif user_role == "Supervisor":
+    st.info(
+        "You have read-only access to all queries, data, and analytics for oversight purposes.",
+        icon="👁️",
     )
 else:
     st.info(
@@ -258,11 +335,39 @@ if user_role == "CM Staff":
                     new_row = edited_df[edited_df["ID"] == query_id].iloc[0]
                     st.write(f"**{query_id}**: Status: {new_row['Status']}, Priority: {new_row['Priority']}")
         
+elif user_role == "Supervisor":
+    st.info("👁️ **Supervisor Mode**: You have read-only access to all queries and analytics for oversight.", icon="👁️")
+    
+    # Show read-only view for Supervisors with all data
+    edited_df = st.dataframe(
+        st.session_state.df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Status": st.column_config.TextColumn(
+                "Status",
+                help="Current status of the query"
+            ),
+            "Priority": st.column_config.TextColumn(
+                "Priority",
+                help="Priority level of the query"
+            ),
+            "Internal Notes": st.column_config.TextColumn(
+                "Internal Notes",
+                help="Internal notes (CM Staff only)"
+            ),
+            "Public Notes": st.column_config.TextColumn(
+                "Public Notes",
+                help="Notes visible to Branch Managers"
+            ),
+        }
+    )
+    
 else:
     st.info("👤 **Branch Manager Mode**: You can view your queries and their current status. Contact CM Staff for status changes.", icon="👤")
     
-    # Show read-only view for Branch Managers
-    st.dataframe(
+    # Show read-only view for Branch Managers with public notes
+    edited_df = st.dataframe(
         st.session_state.df,
         use_container_width=True,
         hide_index=True,
@@ -275,14 +380,51 @@ else:
                 "Priority",
                 help="Priority level of your query"
             ),
+            "Public Notes": st.column_config.TextColumn(
+                "Public Notes",
+                help="Notes from CM Staff about your query"
+            ),
         }
     )
-    
-    # Use the original dataframe for statistics since it's not editable
-    edited_df = st.session_state.df
 
 # Show some metrics and charts about the ticket.
 st.header("Query Statistics")
+
+# Add special analytics for Supervisors
+if user_role == "Supervisor":
+    st.subheader("🎯 Supervisor Analytics")
+    
+    # Performance metrics
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_queries = len(st.session_state.df)
+        st.metric("Total Queries", total_queries)
+    
+    with col2:
+        open_queries = len(st.session_state.df[st.session_state.df["Status"] == "Open"])
+        st.metric("Open Queries", open_queries, delta=open_queries - total_queries//2)
+    
+    with col3:
+        resolved_queries = len(st.session_state.df[st.session_state.df["Status"].isin(["Resolved", "Closed"])])
+        st.metric("Resolved/Closed", resolved_queries)
+    
+    with col4:
+        avg_resolution_time = 16  # This would be calculated from actual data
+        st.metric("Avg Resolution (hrs)", avg_resolution_time)
+    
+    # File upload statistics
+    if "Original File" in st.session_state.df.columns:
+        st.subheader("📁 File Upload Statistics")
+        file_uploads = st.session_state.df["Original File"].notna().sum()
+        st.metric("Queries with Files", file_uploads, delta=file_uploads)
+        
+        # Show file types
+        if file_uploads > 0:
+            file_extensions = st.session_state.df[st.session_state.df["Original File"].notna()]["Original File"].str.extract(r'\.(\w+)$')[0].value_counts()
+            st.write("**File Types Uploaded:**")
+            for ext, count in file_extensions.items():
+                st.write(f"- {ext.upper()}: {count} files")
 
 # Show metrics side by side using `st.columns` and `st.metric`.
 col1, col2, col3 = st.columns(3)
