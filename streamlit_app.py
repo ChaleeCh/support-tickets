@@ -14,7 +14,7 @@ st.title("🎫 MLF CREDIT MANAGEMENT QUERY SYSTEM")
 st.sidebar.header("🔐 User Access")
 user_role = st.sidebar.selectbox(
     "Select your role:",
-    ["Submitter", "IT Staff"],
+    ["Branch Manager", "CM Staff"],
     help="Choose your role to access appropriate features"
 )
 
@@ -152,8 +152,8 @@ if uploaded_file is not None:
 st.header("Existing Queries")
 st.write(f"Number of queries: `{len(st.session_state.df)}`")
 
-# Add internal notes functionality for IT staff
-if user_role == "IT Staff":
+# Add internal notes functionality for CM Staff
+if user_role == "CM Staff":
     st.subheader("📝 Add Internal Notes")
     
     # Add a notes column if it doesn't exist
@@ -168,7 +168,7 @@ if user_role == "IT Staff":
             help="Choose a query ID to add internal notes"
         )
         notes = st.text_area(
-            "Internal Notes (only visible to IT staff):",
+            "Internal Notes (only visible to CM Staff):",
             help="Add internal notes about this query"
         )
         add_notes = st.form_submit_button("Add Notes")
@@ -198,7 +198,7 @@ if user_role == "IT Staff":
     with col5:
         st.metric("Closed", status_counts.get("Closed", 0))
 
-if user_role == "IT Staff":
+if user_role == "CM Staff":
     st.info(
         "You can edit the queries by double clicking on a cell. Note how the plots below "
         "update automatically! You can also sort the table by clicking on the column headers.",
@@ -212,10 +212,10 @@ else:
     )
 
 # Show different interfaces based on user role
-if user_role == "IT Staff":
-    st.info("🔧 **IT Staff Mode**: You can edit query statuses and priorities. Changes are saved automatically.", icon="🔧")
+if user_role == "CM Staff":
+    st.info("🔧 **CM Staff Mode**: You can edit query statuses and priorities. Changes are saved automatically.", icon="🔧")
     
-    # Show the tickets dataframe with `st.data_editor` for IT staff
+    # Show the tickets dataframe with `st.data_editor` for CM Staff
     edited_df = st.data_editor(
         st.session_state.df,
         use_container_width=True,
@@ -223,20 +223,20 @@ if user_role == "IT Staff":
         column_config={
             "Status": st.column_config.SelectboxColumn(
                 "Status",
-                help="Query status - IT staff can change this",
+                help="Query status - CM Staff can change this",
                 options=["Open", "In Progress", "Closed", "Resolved", "On Hold"],
                 required=True,
             ),
             "Priority": st.column_config.SelectboxColumn(
                 "Priority",
-                help="Priority level - IT staff can change this",
+                help="Priority level - CM Staff can change this",
                 options=["High", "Medium", "Low", "Critical"],
                 required=True,
             ),
         },
         # Disable editing the ID and Date Submitted columns.
         disabled=["ID", "Date Submitted"],
-        key="it_staff_editor"
+        key="cm_staff_editor"
     )
     
     # Save changes automatically
@@ -259,9 +259,9 @@ if user_role == "IT Staff":
                     st.write(f"**{query_id}**: Status: {new_row['Status']}, Priority: {new_row['Priority']}")
         
 else:
-    st.info("👤 **Submitter Mode**: You can view your queries and their current status. Contact IT staff for status changes.", icon="👤")
+    st.info("👤 **Branch Manager Mode**: You can view your queries and their current status. Contact CM Staff for status changes.", icon="👤")
     
-    # Show read-only view for submitters
+    # Show read-only view for Branch Managers
     st.dataframe(
         st.session_state.df,
         use_container_width=True,
