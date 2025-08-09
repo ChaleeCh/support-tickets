@@ -7,13 +7,11 @@ import pandas as pd
 import streamlit as st
 
 # Show app title and description.
-st.set_page_config(page_title="Support tickets", page_icon="🎫")
-st.title("🎫 Support tickets")
+st.set_page_config(page_title="MLF CREDIT MANAGEMENT QUERY SYSTEM", page_icon="🎫")
+st.title("🎫 MLF CREDIT MANAGEMENT QUERY SYSTEM")
 st.write(
     """
-    This app shows how you can build an internal tool in Streamlit. Here, we are 
-    implementing a support ticket workflow. The user can create a ticket, edit 
-    existing tickets, and view some statistics.
+    Please submit your queries by adding a ticket below. For queries that require templates such as Mobile Money, Change of Product or First RM, please upload the excel files.
     """
 )
 
@@ -66,7 +64,7 @@ if "df" not in st.session_state:
 
 
 # Show a section to add a new ticket.
-st.header("Add a ticket")
+st.header("Submit a Query")
 
 # We're adding tickets via an `st.form` and some input widgets. If widgets are used
 # in a form, the app will only rerun once the submit button is pressed.
@@ -98,8 +96,8 @@ if submitted:
     st.session_state.df = pd.concat([df_new, st.session_state.df], axis=0)
 
 # Show section to upload Excel/CSV files.
-st.header("Upload tickets from file")
-st.write("Upload an Excel (.xlsx, .xls) or CSV file to add multiple tickets at once.")
+st.header("Upload Template Files")
+st.write("Upload Excel (.xlsx, .xls) or CSV files for queries that require templates such as Mobile Money, Change of Product, or First RM.")
 
 uploaded_file = st.file_uploader(
     "Choose a file",
@@ -142,11 +140,11 @@ if uploaded_file is not None:
         st.write("Please make sure your file is properly formatted and try again.")
 
 # Show section to view and edit existing tickets in a table.
-st.header("Existing tickets")
-st.write(f"Number of tickets: `{len(st.session_state.df)}`")
+st.header("Existing Queries")
+st.write(f"Number of queries: `{len(st.session_state.df)}`")
 
 st.info(
-    "You can edit the tickets by double clicking on a cell. Note how the plots below "
+    "You can edit the queries by double clicking on a cell. Note how the plots below "
     "update automatically! You can also sort the table by clicking on the column headers.",
     icon="✍️",
 )
@@ -176,18 +174,18 @@ edited_df = st.data_editor(
 )
 
 # Show some metrics and charts about the ticket.
-st.header("Statistics")
+st.header("Query Statistics")
 
 # Show metrics side by side using `st.columns` and `st.metric`.
 col1, col2, col3 = st.columns(3)
 num_open_tickets = len(st.session_state.df[st.session_state.df.Status == "Open"])
-col1.metric(label="Number of open tickets", value=num_open_tickets, delta=10)
+col1.metric(label="Number of open queries", value=num_open_tickets, delta=10)
 col2.metric(label="First response time (hours)", value=5.2, delta=-1.5)
 col3.metric(label="Average resolution time (hours)", value=16, delta=2)
 
 # Show two Altair charts using `st.altair_chart`.
 st.write("")
-st.write("##### Ticket status per month")
+st.write("##### Query status per month")
 status_plot = (
     alt.Chart(edited_df)
     .mark_bar()
@@ -203,7 +201,7 @@ status_plot = (
 )
 st.altair_chart(status_plot, use_container_width=True, theme="streamlit")
 
-st.write("##### Current ticket priorities")
+st.write("##### Current query priorities")
 priority_plot = (
     alt.Chart(edited_df)
     .mark_arc()
