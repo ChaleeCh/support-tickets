@@ -9,6 +9,15 @@ import streamlit as st
 # Show app title and description.
 st.set_page_config(page_title="MLF CREDIT MANAGEMENT QUERY SYSTEM", page_icon="🎫")
 st.title("🎫 MLF CREDIT MANAGEMENT QUERY SYSTEM")
+
+# Add role selector at the top
+st.sidebar.header("🔐 User Access")
+user_role = st.sidebar.selectbox(
+    "Select your role:",
+    ["Submitter", "IT Staff"],
+    help="Choose your role to access appropriate features"
+)
+
 st.write(
     """
     Please submit your queries by adding a ticket below. For queries that require templates such as Mobile Money, Change of Product or First RM, please upload the excel files.
@@ -143,35 +152,134 @@ if uploaded_file is not None:
 st.header("Existing Queries")
 st.write(f"Number of queries: `{len(st.session_state.df)}`")
 
-st.info(
-    "You can edit the queries by double clicking on a cell. Note how the plots below "
-    "update automatically! You can also sort the table by clicking on the column headers.",
-    icon="✍️",
-)
+# Add internal notes functionality for IT staff
+if user_role == "IT Staff":
+    st.subheader("📝 Add Internal Notes")
+    
+    # Add a notes column if it doesn't exist
+    if "Internal Notes" not in st.session_state.df.columns:
+        st.session_state.df["Internal Notes"] = ""
+    
+    # Create a form for adding notes
+    with st.form("add_notes_form"):
+        selected_query = st.selectbox(
+            "Select query to add notes:",
+            options=st.session_state.df["ID"].tolist(),
+            help="Choose a query ID to add internal notes"
+        )
+        notes = st.text_area(
+            "Internal Notes (only visible to IT staff):",
+            help="Add internal notes about this query"
+        )
+        add_notes = st.form_submit_button("Add Notes")
+    
+    if add_notes and notes.strip():
+        # Update the notes for the selected query
+        query_index = st.session_state.df[st.session_state.df["ID"] == selected_query].index[0]
+        st.session_state.df.loc[query_index, "Internal Notes"] = notes
+        st.success(f"✅ Notes added to {selected_query}")
+        st.rerun()
+    
+    # Add status change tracking
+    st.subheader("📊 Status Change Summary")
+    
+    # Count queries by status
+    status_counts = st.session_state.df["Status"].value_counts()
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        st.metric("Open", status_counts.get("Open", 0))
+    with col2:
+        st.metric("In Progress", status_counts.get("In Progress", 0))
+    with col3:
+        st.metric("On Hold", status_counts.get("On Hold", 0))
+    with col4:
+        st.metric("Resolved", status_counts.get("Resolved", 0))
+    with col5:
+        st.metric("Closed", status_counts.get("Closed", 0))
 
-# Show the tickets dataframe with `st.data_editor`. This lets the user edit the table
-# cells. The edited data is returned as a new dataframe.
-edited_df = st.data_editor(
-    st.session_state.df,
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        "Status": st.column_config.SelectboxColumn(
-            "Status",
-            help="Ticket status",
-            options=["Open", "In Progress", "Closed"],
-            required=True,
-        ),
-        "Priority": st.column_config.SelectboxColumn(
-            "Priority",
-            help="Priority",
-            options=["High", "Medium", "Low"],
-            required=True,
-        ),
-    },
-    # Disable editing the ID and Date Submitted columns.
-    disabled=["ID", "Date Submitted"],
-)
+if user_role == "IT Staff":
+    st.info(
+        "You can edit the queries by double clicking on a cell. Note how the plots below "
+        "update automatically! You can also sort the table by clicking on the column headers.",
+        icon="✍️",
+    )
+else:
+    st.info(
+        "You can view your queries and their current status. The table below shows all queries "
+        "and you can sort by clicking on the column headers.",
+        icon="👁️",
+    )
+
+# Show different interfaces based on user role
+if user_role == "IT Staff":
+    st.info("🔧 **IT Staff Mode**: You can edit query statuses and priorities. Changes are saved automatically.", icon="🔧")
+    
+    # Show the tickets dataframe with `st.data_editor` for IT staff
+    edited_df = st.data_editor(
+        st.session_state.df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Status": st.column_config.SelectboxColumn(
+                "Status",
+                help="Query status - IT staff can change this",
+                options=["Open", "In Progress", "Closed", "Resolved", "On Hold"],
+                required=True,
+            ),
+            "Priority": st.column_config.SelectboxColumn(
+                "Priority",
+                help="Priority level - IT staff can change this",
+                options=["High", "Medium", "Low", "Critical"],
+                required=True,
+            ),
+        },
+        # Disable editing the ID and Date Submitted columns.
+        disabled=["ID", "Date Submitted"],
+        key="it_staff_editor"
+    )
+    
+    # Save changes automatically
+    if edited_df is not None and not edited_df.equals(st.session_state.df):
+        # Track what changed
+        changed_queries = []
+        for idx, row in edited_df.iterrows():
+            if not st.session_state.df.iloc[idx].equals(row):
+                changed_queries.append(row["ID"])
+        
+        st.session_state.df = edited_df
+        
+        if changed_queries:
+            st.success(f"✅ Query statuses updated successfully for: {', '.join(changed_queries)}")
+            
+            # Show what changed
+            with st.expander("📋 View Changes Made"):
+                for query_id in changed_queries:
+                    new_row = edited_df[edited_df["ID"] == query_id].iloc[0]
+                    st.write(f"**{query_id}**: Status: {new_row['Status']}, Priority: {new_row['Priority']}")
+        
+else:
+    st.info("👤 **Submitter Mode**: You can view your queries and their current status. Contact IT staff for status changes.", icon="👤")
+    
+    # Show read-only view for submitters
+    st.dataframe(
+        st.session_state.df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Status": st.column_config.TextColumn(
+                "Status",
+                help="Current status of your query"
+            ),
+            "Priority": st.column_config.TextColumn(
+                "Priority",
+                help="Priority level of your query"
+            ),
+        }
+    )
+    
+    # Use the original dataframe for statistics since it's not editable
+    edited_df = st.session_state.df
 
 # Show some metrics and charts about the ticket.
 st.header("Query Statistics")
