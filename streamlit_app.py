@@ -97,6 +97,50 @@ if submitted:
     st.dataframe(df_new, use_container_width=True, hide_index=True)
     st.session_state.df = pd.concat([df_new, st.session_state.df], axis=0)
 
+# Show section to upload Excel/CSV files.
+st.header("Upload tickets from file")
+st.write("Upload an Excel (.xlsx, .xls) or CSV file to add multiple tickets at once.")
+
+uploaded_file = st.file_uploader(
+    "Choose a file",
+    type=['csv', 'xlsx', 'xls'],
+    help="Upload any CSV or Excel file. The data will be added to your tickets dataset as-is."
+)
+
+if uploaded_file is not None:
+    try:
+        # Determine file type and read accordingly
+        if uploaded_file.name.endswith('.csv'):
+            df_uploaded = pd.read_csv(uploaded_file)
+        else:
+            df_uploaded = pd.read_excel(uploaded_file)
+        
+        # Show preview of uploaded data
+        st.write("**Preview of uploaded data:**")
+        st.dataframe(df_uploaded.head(), use_container_width=True, hide_index=True)
+        
+        # Generate IDs for new tickets if not present
+        if 'ID' not in df_uploaded.columns:
+            recent_ticket_number = int(max(st.session_state.df.ID).split("-")[1])
+            df_uploaded['ID'] = [f"TICKET-{recent_ticket_number + i + 1}" for i in range(len(df_uploaded))]
+        
+        # Show final data to be added
+        st.write("**Data to be added:**")
+        st.dataframe(df_uploaded, use_container_width=True, hide_index=True)
+        
+        # Add upload button
+        if st.button("Add uploaded tickets"):
+            # Append to existing dataframe
+            st.session_state.df = pd.concat([df_uploaded, st.session_state.df], axis=0)
+            st.success(f"Successfully added {len(df_uploaded)} tickets!")
+            
+            # Clear the uploaded file
+            st.rerun()
+                
+    except Exception as e:
+        st.error(f"Error reading file: {str(e)}")
+        st.write("Please make sure your file is properly formatted and try again.")
+
 # Show section to view and edit existing tickets in a table.
 st.header("Existing tickets")
 st.write(f"Number of tickets: `{len(st.session_state.df)}`")
