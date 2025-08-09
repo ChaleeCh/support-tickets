@@ -437,7 +437,7 @@ col3.metric(label="Average resolution time (hours)", value=16, delta=2)
 st.write("")
 st.write("##### Query status per month")
 status_plot = (
-    alt.Chart(edited_df)
+    alt.Chart(st.session_state.df)
     .mark_bar()
     .encode(
         x="month(Date Submitted):O",
@@ -453,7 +453,7 @@ st.altair_chart(status_plot, use_container_width=True, theme="streamlit")
 
 st.write("##### Current query priorities")
 priority_plot = (
-    alt.Chart(edited_df)
+    alt.Chart(st.session_state.df)
     .mark_arc()
     .encode(theta="count():Q", color="Priority:N")
     .properties(height=300)
