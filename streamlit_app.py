@@ -8,7 +8,62 @@ import streamlit as st
 
 # Show app title and description.
 st.set_page_config(page_title="MLF CREDIT MANAGEMENT QUERY SYSTEM", page_icon="🎫")
-st.title("🎫 MLF CREDIT MANAGEMENT QUERY SYSTEM")
+
+# Apply MLF brand colors
+st.markdown("""
+<style>
+    .main-header {
+        color: #563061;
+        text-align: center;
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+    .mlf-primary {
+        color: #563061;
+    }
+    .mlf-secondary {
+        color: #0D6ABF;
+    }
+    .stButton > button {
+        background-color: #563061;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 0.5rem 1rem;
+    }
+    .stButton > button:hover {
+        background-color: #0D6ABF;
+        color: white;
+    }
+    .stSelectbox > div > div {
+        border-color: #563061;
+    }
+    .stTextArea > div > div > textarea {
+        border-color: #563061;
+    }
+    .stFileUploader > div > div {
+        border-color: #563061;
+    }
+    .stDataFrame {
+        border: 2px solid #563061;
+        border-radius: 8px;
+    }
+    .stMetric {
+        background-color: #f8f9fa;
+        border-left: 4px solid #0D6ABF;
+        padding: 1rem;
+        border-radius: 5px;
+    }
+    .stHeader {
+        color: #563061;
+        border-bottom: 2px solid #0D6ABF;
+        padding-bottom: 0.5rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<h1 class="main-header">🎫 MLF CREDIT MANAGEMENT QUERY SYSTEM</h1>', unsafe_allow_html=True)
 
 # Add role selector at the top
 st.sidebar.header("🔐 User Access")
@@ -64,6 +119,7 @@ if "df" not in st.session_state:
             datetime.date(2023, 6, 1) + datetime.timedelta(days=random.randint(0, 182))
             for _ in range(100)
         ],
+        "CM": ["" for _ in range(100)],  # Empty CM column for assignment
     }
     df = pd.DataFrame(data)
 
@@ -74,13 +130,14 @@ if "df" not in st.session_state:
 
 # Show a section to add a new ticket - only for Branch Managers
 if user_role == "Branch Manager":
-    st.header("Submit a Query")
+    st.markdown('<h2 class="stHeader">📝 Submit a Query</h2>', unsafe_allow_html=True)
 
     # We're adding tickets via an `st.form` and some input widgets. If widgets are used
     # in a form, the app will only rerun once the submit button is pressed.
     with st.form("add_ticket_form"):
         issue = st.text_area("Describe the issue")
         priority = st.selectbox("Priority", ["High", "Medium", "Low"])
+        cm = st.text_input("CM (Credit Manager)", placeholder="Enter CM name or leave blank")
         submitted = st.form_submit_button("Submit")
 
     if submitted:
@@ -96,6 +153,7 @@ if user_role == "Branch Manager":
                     "Status": "Open",
                     "Priority": priority,
                     "Date Submitted": today,
+                    "CM": cm,
                 }
             ]
         )
@@ -107,7 +165,7 @@ if user_role == "Branch Manager":
 
 # Show section to upload Excel/CSV files - only for Branch Managers
 if user_role == "Branch Manager":
-    st.header("Upload Template Files")
+    st.markdown('<h2 class="stHeader">📁 Upload Template Files</h2>', unsafe_allow_html=True)
     st.write("Upload Excel (.xlsx, .xls) or CSV files for queries that require templates such as Mobile Money, Change of Product, or First RM.")
 
     uploaded_file = st.file_uploader(
@@ -151,7 +209,7 @@ if user_role == "Branch Manager":
             st.write("Please make sure your file is properly formatted and try again.")
 
 # Show section to view and edit existing tickets in a table.
-st.header("Existing Queries")
+st.markdown('<h2 class="stHeader">📊 Existing Queries</h2>', unsafe_allow_html=True)
 st.write(f"Number of queries: `{len(st.session_state.df)}`")
 
 # Add internal notes functionality for CM Staff
@@ -238,6 +296,11 @@ if user_role == "CM Staff":
                 options=["High", "Medium", "Low", "Critical"],
                 required=True,
             ),
+            "CM": st.column_config.TextColumn(
+                "CM",
+                help="Credit Manager assigned to this query",
+                required=False,
+            ),
         },
         # Disable editing the ID and Date Submitted columns.
         disabled=["ID", "Date Submitted"],
@@ -283,6 +346,10 @@ else:
                 "Priority",
                 help="Priority level of your query"
             ),
+            "CM": st.column_config.TextColumn(
+                "CM",
+                help="Credit Manager assigned to this query"
+            ),
         }
     )
     
@@ -290,7 +357,7 @@ else:
     edited_df = df_sorted
 
 # Show some metrics and charts about the ticket.
-st.header("Query Statistics")
+st.markdown('<h2 class="stHeader">📈 Query Statistics</h2>', unsafe_allow_html=True)
 
 # Show metrics side by side using `st.columns` and `st.metric`.
 col1, col2, col3 = st.columns(3)
