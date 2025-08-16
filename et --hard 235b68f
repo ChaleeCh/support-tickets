@@ -1,0 +1,5 @@
+[33m84f8308[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Implement file download and CM Notes system for CM Staff and Branch Managers
+[33m47c5826[m Fix StreamlitAPIException by using st.session_state.df for Altair charts instead of edited_df
+[33m235b68f[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add file download for CM Staff, public notes system, and Supervisor role with analytics
+[33m07201b0[m Update role names: Submitter -> Branch Manager, IT Staff -> CM Staff
+[33meac39c3[m Add role-based access control system for IT staff and submitters
